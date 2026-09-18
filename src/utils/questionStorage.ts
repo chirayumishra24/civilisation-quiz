@@ -20,10 +20,49 @@ export function setStoredActiveQuestions(questions: Question[]): void {
   } catch {}
 }
 
+export interface SavedGameCodeEntry {
+  code: string;
+  questionCount: number;
+  fileName?: string;
+  createdAt: number;
+}
+
+const CODE_HISTORY_KEY = 'civilisation_saved_codes_history';
+
+export function isFirebaseConfigured(): boolean {
+  const key = import.meta.env.VITE_FIREBASE_API_KEY;
+  return Boolean(key && key !== 'mock-api-key' && key.length > 5);
+}
+
+export function getSavedCodesHistory(): SavedGameCodeEntry[] {
+  try {
+    const data = localStorage.getItem(CODE_HISTORY_KEY);
+    if (data) return JSON.parse(data);
+  } catch {}
+  return [];
+}
+
+export function addSavedCodeToHistory(entry: SavedGameCodeEntry): void {
+  try {
+    const existing = getSavedCodesHistory().filter((c) => c.code !== entry.code);
+    const updated = [entry, ...existing].slice(0, 30);
+    localStorage.setItem(CODE_HISTORY_KEY, JSON.stringify(updated));
+  } catch {}
+}
+
+export function deleteSavedCodeFromHistory(code: string): void {
+  try {
+    const existing = getSavedCodesHistory().filter((c) => c.code !== code);
+    localStorage.setItem(CODE_HISTORY_KEY, JSON.stringify(existing));
+    localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}${code}`);
+  } catch {}
+}
+
 export async function saveQuestionSet(
   code: string,
   questions: Question[],
-  createdBy = 'Teacher'
+  createdBy = 'Teacher',
+  fileName = ''
 ): Promise<string> {
   const normalizedCode = code.toUpperCase().trim();
   const { teamA, teamB } = splitQuestionsForTeams(questions);
@@ -40,6 +79,12 @@ export async function saveQuestionSet(
   // 1. Instant LocalStorage save (primary storage for classroom)
   try {
     localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${normalizedCode}`, JSON.stringify(payload));
+    addSavedCodeToHistory({
+      code: normalizedCode,
+      questionCount: questions.length,
+      fileName: fileName || undefined,
+      createdAt: Date.now(),
+    });
   } catch (e) {
     console.warn('LocalStorage save failed', e);
   }
@@ -49,9 +94,10 @@ export async function saveQuestionSet(
     const ref = doc(db, 'gameCodes', normalizedCode);
     Promise.race([
       setDoc(ref, payload),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500)),
     ]).catch((err) => {
       // Cloud sync failed or timed out, local storage remains intact
+      console.warn('Firestore cloud sync notice:', err?.message || err);
     });
   } catch {
     // Ignore cloud errors

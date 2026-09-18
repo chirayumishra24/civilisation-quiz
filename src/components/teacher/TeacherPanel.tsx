@@ -5,7 +5,16 @@ import { UploadZone } from './UploadZone';
 import { QuestionPreview } from './QuestionPreview';
 import { QUESTIONS_BANK } from '../../data/questions';
 import { Question, Category, Difficulty } from '../../types/game';
-import { saveQuestionSet, generateGameCode, setStoredActiveQuestions } from '../../utils/questionStorage';
+import {
+  saveQuestionSet,
+  generateGameCode,
+  setStoredActiveQuestions,
+  getSavedCodesHistory,
+  deleteSavedCodeFromHistory,
+  loadQuestionSet,
+  isFirebaseConfigured,
+  SavedGameCodeEntry,
+} from '../../utils/questionStorage';
 import {
   ArrowLeft,
   KeyRound,
@@ -18,6 +27,10 @@ import {
   Play,
   CheckCircle2,
   Lock,
+  History,
+  Trash2,
+  Cloud,
+  HardDrive,
 } from 'lucide-react';
 
 interface TeacherPanelProps {
@@ -39,6 +52,9 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
   const [activeCode, setActiveCode] = useState<string>('');
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [savedCodes, setSavedCodes] = useState<SavedGameCodeEntry[]>(() => getSavedCodesHistory());
+  const [copiedCodeMap, setCopiedCodeMap] = useState<{ [code: string]: boolean }>({});
+  const cloudActive = isFirebaseConfigured();
 
   // Single Question Add state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -65,10 +81,11 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
     if (!isSheetUploaded && questions.length === 0) return;
     setIsSaving(true);
     const code = generateGameCode();
-    await saveQuestionSet(code, questions);
+    await saveQuestionSet(code, questions, 'Teacher', uploadedFileName || 'Custom Questions');
     setStoredActiveQuestions(questions);
     onUpdateQuestions?.(questions);
     setActiveCode(code);
+    setSavedCodes(getSavedCodesHistory());
     setIsSaving(false);
   };
 
@@ -77,6 +94,37 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
     navigator.clipboard.writeText(activeCode);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleCopySpecificCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCodeMap((prev) => ({ ...prev, [code]: true }));
+    setTimeout(() => {
+      setCopiedCodeMap((prev) => ({ ...prev, [code]: false }));
+    }, 2000);
+  };
+
+  const handleDeleteCode = (code: string) => {
+    deleteSavedCodeFromHistory(code);
+    setSavedCodes(getSavedCodesHistory());
+    if (activeCode === code) setActiveCode('');
+  };
+
+  const handleLoadSavedCode = async (entry: SavedGameCodeEntry) => {
+    setIsSaving(true);
+    const set = await loadQuestionSet(entry.code);
+    setIsSaving(false);
+    if (set) {
+      const idMap = new Map<string, Question>();
+      [...set.teamAQuestions, ...set.teamBQuestions].forEach((q) => idMap.set(q.id, q));
+      const combined = Array.from(idMap.values());
+      setQuestions(combined);
+      setStoredActiveQuestions(combined);
+      onUpdateQuestions?.(combined);
+      setActiveCode(entry.code);
+      setIsSheetUploaded(true);
+      setUploadedFileName(entry.fileName || `Code: ${entry.code}`);
+    }
   };
 
   const handleDeleteQuestion = (id: string) => {
@@ -163,9 +211,31 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
             <h2 className="font-title text-xl sm:text-2xl text-stone-900 leading-tight">
               Teacher Dashboard
             </h2>
-            <p className="text-[11px] font-bold text-amber-800">
-              {questions.length} Questions {isSheetUploaded ? `(from ${uploadedFileName})` : 'Loaded'}
-            </p>
+            <div className="flex items-center justify-end gap-2 mt-1">
+              <span className="text-[11px] font-bold text-amber-800">
+                {questions.length} Questions {isSheetUploaded ? `(from ${uploadedFileName})` : 'Loaded'}
+              </span>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                  cloudActive
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    : 'bg-blue-100 text-blue-800 border border-blue-300'
+                }`}
+                title={cloudActive ? 'Firebase Firestore cloud synchronization active' : 'Local classroom storage active'}
+              >
+                {cloudActive ? (
+                  <>
+                    <Cloud className="w-3 h-3 text-emerald-600" />
+                    <span>Firebase Cloud Active</span>
+                  </>
+                ) : (
+                  <>
+                    <HardDrive className="w-3 h-3 text-blue-600" />
+                    <span>Classroom Storage Active</span>
+                  </>
+                )}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -234,22 +304,34 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
 
             <div className="flex items-center gap-3">
               {activeCode ? (
-                <div className="flex items-center gap-2 p-2 rounded-2xl bg-amber-100 border-2 border-amber-300 shadow-clay-inset">
-                  <KeyRound className="w-5 h-5 text-amber-700 ml-2" />
-                  <span className="font-title text-2xl tracking-widest text-amber-950 px-2">
-                    {activeCode}
-                  </span>
-                  <button
-                    onClick={handleCopyCode}
-                    className="p-2 rounded-xl bg-white hover:bg-stone-50 text-stone-700 shadow-sm transition-all active:scale-90"
-                    title="Copy Code"
-                  >
-                    {isCopied ? (
-                      <Check className="w-4 h-4 text-emerald-600" />
-                    ) : (
-                      <Copy className="w-4 h-4 text-stone-600" />
-                    )}
-                  </button>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 p-2 rounded-2xl bg-amber-100 border-2 border-amber-300 shadow-clay-inset">
+                    <KeyRound className="w-5 h-5 text-amber-700 ml-2" />
+                    <span className="font-title text-2xl tracking-widest text-amber-950 px-2">
+                      {activeCode}
+                    </span>
+                    <button
+                      onClick={handleCopyCode}
+                      className="p-2 rounded-xl bg-white hover:bg-stone-50 text-stone-700 shadow-sm transition-all active:scale-90"
+                      title="Copy Code"
+                    >
+                      {isCopied ? (
+                        <Check className="w-4 h-4 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-4 h-4 text-stone-600" />
+                      )}
+                    </button>
+                  </div>
+                  {isSheetUploaded && (
+                    <button
+                      onClick={handleGenerateCode}
+                      disabled={isSaving}
+                      className="px-3 py-2 text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-xl border border-amber-300 transition-all active:scale-95"
+                      title="Generate another code for this set"
+                    >
+                      + New Code
+                    </button>
+                  )}
                 </div>
               ) : (
                 <ClayButton
@@ -267,6 +349,82 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
               )}
             </div>
           </div>
+
+          {/* Saved Codes History */}
+          {savedCodes.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-stone-200">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-stone-700">
+                  <History className="w-4 h-4 text-amber-600" />
+                  <span>All Saved Game Codes ({savedCodes.length})</span>
+                </div>
+                <span className="text-[10px] text-stone-500 font-medium">
+                  Codes remain saved in your browser • Click copy or load anytime
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                {savedCodes.map((item) => (
+                  <div
+                    key={item.code}
+                    className={`p-3 rounded-xl border transition-all flex flex-col justify-between gap-2 ${
+                      activeCode === item.code
+                        ? 'bg-amber-100/80 border-amber-400 shadow-clay-sm'
+                        : 'bg-stone-50/80 hover:bg-white border-stone-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-title text-lg tracking-widest text-stone-900 bg-white px-2.5 py-0.5 rounded-lg border border-stone-200 shadow-sm">
+                        {item.code}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleCopySpecificCode(item.code)}
+                          className="p-1.5 rounded-lg bg-white hover:bg-amber-50 text-stone-600 hover:text-amber-800 border border-stone-200 shadow-sm transition-all active:scale-95 flex items-center gap-1 text-[11px] font-bold"
+                          title="Copy Code"
+                        >
+                          {copiedCodeMap[item.code] ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="text-emerald-700">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCode(item.code)}
+                          className="p-1.5 rounded-lg bg-white hover:bg-red-50 text-stone-400 hover:text-red-600 border border-stone-200 shadow-sm transition-all active:scale-95"
+                          title="Delete Code"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-stone-600">
+                      <span className="truncate max-w-[140px]" title={item.fileName || 'Custom Set'}>
+                        {item.fileName || 'Custom Set'}
+                      </span>
+                      <span className="font-semibold text-stone-700">
+                        {item.questionCount} Questions
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => handleLoadSavedCode(item)}
+                      className="w-full py-1 text-[11px] font-bold text-amber-800 bg-amber-500/10 hover:bg-amber-500/20 rounded-lg transition-all text-center"
+                    >
+                      {activeCode === item.code ? '✓ Active in Quiz' : 'Load Questions'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </ClayCard>
 
         {/* Question Bank Preview & Management */}
