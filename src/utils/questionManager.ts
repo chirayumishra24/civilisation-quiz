@@ -34,6 +34,7 @@ export class QuestionManager {
   }
 
   getNextQuestion(): Question | null {
+    if (!this.questions || this.questions.length === 0) return null;
     if (this.currentIndex >= this.questions.length) {
       // Reshuffle and restart
       this.questions = this.shuffle(this.questions);
@@ -41,6 +42,7 @@ export class QuestionManager {
       this.usedIds.clear();
     }
     const q = this.questions[this.currentIndex];
+    if (!q) return null;
     this.currentIndex++;
     this.usedIds.add(q.id);
     return shuffleQuestionOptions(q);
@@ -58,12 +60,26 @@ export class QuestionManager {
 }
 
 /**
- * Split questions into two roughly equal sets for the two teams.
- * Ensures both teams get questions from each category.
+ * Split questions into two sets for the two teams.
+ * If question pool is small (< 6), both teams get all questions so students don't miss out.
+ * Otherwise, divides questions evenly while balancing categories.
  */
 export function splitQuestionsForTeams(
   allQuestions: Question[]
 ): { teamA: Question[]; teamB: Question[] } {
+  if (!allQuestions || allQuestions.length === 0) {
+    return { teamA: [], teamB: [] };
+  }
+
+  // If pool is small (< 6 questions), give full set to both teams
+  // so both teams get to experience all uploaded questions
+  if (allQuestions.length < 6) {
+    return {
+      teamA: [...allQuestions],
+      teamB: [...allQuestions],
+    };
+  }
+
   // Group by category
   const byCategory = new Map<string, Question[]>();
   for (const q of allQuestions) {
@@ -74,15 +90,21 @@ export function splitQuestionsForTeams(
 
   const teamA: Question[] = [];
   const teamB: Question[] = [];
+  let globalToggle = 0;
 
-  // Alternate questions from each category
+  // Alternate questions across teams
   for (const [, questions] of byCategory) {
     const shuffled = [...questions].sort(() => Math.random() - 0.5);
-    shuffled.forEach((q, i) => {
-      if (i % 2 === 0) teamA.push(q);
+    shuffled.forEach((q) => {
+      if (globalToggle % 2 === 0) teamA.push(q);
       else teamB.push(q);
+      globalToggle++;
     });
   }
+
+  // Safeguard: Ensure neither team is empty
+  if (teamA.length === 0) teamA.push(...allQuestions);
+  if (teamB.length === 0) teamB.push(...allQuestions);
 
   return { teamA, teamB };
 }

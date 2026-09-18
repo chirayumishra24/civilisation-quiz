@@ -25,31 +25,48 @@ const MainGamePage: React.FC = () => {
   );
 
   useEffect(() => {
+    const syncActive = () => {
+      const stored = getStoredActiveQuestions();
+      if (stored && stored.length > 0) {
+        setActiveQuestions(stored);
+      }
+    };
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'civilisation_active_questions') {
-        const stored = getStoredActiveQuestions();
-        if (stored) setActiveQuestions(stored);
+        syncActive();
       }
     };
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('focus', syncActive);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', syncActive);
+    };
   }, []);
 
   const handleStartGame = async () => {
+    const stored = getStoredActiveQuestions();
     if (game.gameCode.trim().length >= 4) {
       setCodeLoading(true);
       const customSet = await loadQuestionSet(game.gameCode);
       setCodeLoading(false);
       if (customSet) {
-        const combined = [...customSet.teamAQuestions, ...customSet.teamBQuestions];
+        const idMap = new Map<string, Question>();
+        [...customSet.teamAQuestions, ...customSet.teamBQuestions].forEach((q) => {
+          idMap.set(q.id, q);
+        });
+        const combined = Array.from(idMap.values());
         setActiveQuestions(combined);
         setStoredActiveQuestions(combined);
         game.startGame(combined);
         return;
       }
     }
-    game.startGame(activeQuestions);
+    const currentPool = stored && stored.length > 0 ? stored : activeQuestions;
+    game.startGame(currentPool);
   };
+
+  const isCustomActive = Boolean(getStoredActiveQuestions());
 
   const renderScreen = () => {
     switch (game.screen) {
@@ -61,6 +78,7 @@ const MainGamePage: React.FC = () => {
             onTeacherDashboard={() => window.open('/teacher', '_blank')}
             gameCode={game.gameCode}
             setGameCode={game.setGameCode}
+            activeQuestionsCount={isCustomActive ? activeQuestions.length : undefined}
           />
         );
 
@@ -88,7 +106,10 @@ const MainGamePage: React.FC = () => {
           <VictoryScreen
             winner={game.winner}
             stats={game.stats}
-            onPlayAgain={() => game.startGame(activeQuestions)}
+            onPlayAgain={() => {
+              const fresh = getStoredActiveQuestions() || activeQuestions;
+              game.startGame(fresh);
+            }}
             onSummary={() => game.setScreen('summary')}
             onHome={() => game.setScreen('start')}
           />
@@ -97,7 +118,10 @@ const MainGamePage: React.FC = () => {
       case 'summary':
         return (
           <SummaryScreen
-            onPlayAgain={() => game.startGame(activeQuestions)}
+            onPlayAgain={() => {
+              const fresh = getStoredActiveQuestions() || activeQuestions;
+              game.startGame(fresh);
+            }}
             onHome={() => game.setScreen('start')}
           />
         );

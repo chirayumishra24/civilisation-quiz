@@ -80,7 +80,12 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
   };
 
   const handleDeleteQuestion = (id: string) => {
-    setQuestions((prev) => prev.filter((q) => q.id !== id));
+    setQuestions((prev) => {
+      const updated = prev.filter((q) => q.id !== id);
+      setStoredActiveQuestions(updated);
+      onUpdateQuestions?.(updated);
+      return updated;
+    });
   };
 
   const handleResetDefault = () => {

@@ -16,6 +16,7 @@ import {
 } from '../types/game';
 import { QUESTIONS_BANK } from '../data/questions';
 import { QuestionManager, splitQuestionsForTeams } from '../utils/questionManager';
+import { getStoredActiveQuestions } from '../utils/questionStorage';
 import { soundManager } from '../utils/soundManager';
 import { triggerConstructionBurst, triggerStreakBurst, triggerVictoryConfetti } from '../utils/confetti';
 import { useTimer } from './useTimer';
@@ -62,7 +63,13 @@ export function useGame() {
   });
 
   const initQuestions = useCallback((customPool?: Question[]) => {
-    const pool = customPool && customPool.length >= 12 ? customPool : QUESTIONS_BANK;
+    const stored = getStoredActiveQuestions();
+    const pool =
+      customPool && customPool.length > 0
+        ? customPool
+        : stored && stored.length > 0
+        ? stored
+        : QUESTIONS_BANK;
     const { teamA, teamB } = splitQuestionsForTeams(pool);
     qManagerA.current = new QuestionManager(teamA);
     qManagerB.current = new QuestionManager(teamB);

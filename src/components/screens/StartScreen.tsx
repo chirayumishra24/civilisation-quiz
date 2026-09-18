@@ -10,6 +10,7 @@ interface StartScreenProps {
   onTeacherDashboard: () => void;
   gameCode: string;
   setGameCode: (code: string) => void;
+  activeQuestionsCount?: number;
 }
 
 export const StartScreen: React.FC<StartScreenProps> = ({
@@ -18,6 +19,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({
   onTeacherDashboard,
   gameCode,
   setGameCode,
+  activeQuestionsCount,
 }) => {
   const [codeError, setCodeError] = useState('');
 
@@ -30,11 +32,19 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 
       {/* Top Banner / Classroom Badge */}
       <div className="w-full flex justify-between items-center max-w-5xl z-10">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-white/80 backdrop-blur-md border border-amber-200 shadow-clay-sm">
-          <Landmark className="w-4 h-4 text-amber-700" />
-          <span className="text-xs font-bold text-amber-950 uppercase tracking-wider">
-            Class 6 History • Harappan Civilisation
-          </span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-white/80 backdrop-blur-md border border-amber-200 shadow-clay-sm">
+            <Landmark className="w-4 h-4 text-amber-700" />
+            <span className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+              Class 6 History • Harappan Civilisation
+            </span>
+          </div>
+          {activeQuestionsCount !== undefined && activeQuestionsCount > 0 && (
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-100/90 text-emerald-900 border border-emerald-300 shadow-clay-sm text-xs font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{activeQuestionsCount} Custom Questions Active</span>
+            </div>
+          )}
         </div>
 
         <button
