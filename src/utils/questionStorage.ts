@@ -4,6 +4,21 @@ import { Question, QuestionSet } from '../types/game';
 import { splitQuestionsForTeams } from './questionManager';
 
 const LOCAL_STORAGE_KEY_PREFIX = 'civilisation_set_';
+const ACTIVE_QUESTIONS_KEY = 'civilisation_active_questions';
+
+export function getStoredActiveQuestions(): Question[] | null {
+  try {
+    const data = localStorage.getItem(ACTIVE_QUESTIONS_KEY);
+    if (data) return JSON.parse(data);
+  } catch {}
+  return null;
+}
+
+export function setStoredActiveQuestions(questions: Question[]): void {
+  try {
+    localStorage.setItem(ACTIVE_QUESTIONS_KEY, JSON.stringify(questions));
+  } catch {}
+}
 
 export async function saveQuestionSet(
   code: string,
