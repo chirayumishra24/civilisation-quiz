@@ -15,15 +15,23 @@ import {
   RotateCcw,
   Download,
   Share2,
+  Play,
 } from 'lucide-react';
 
 interface TeacherPanelProps {
+  initialQuestions?: Question[];
   onBack: () => void;
-  onLaunchWithCode?: (code: string, questions: Question[]) => void;
+  onUpdateQuestions?: (questions: Question[]) => void;
+  onLaunchGame?: (questions: Question[]) => void;
 }
 
-export const TeacherPanel: React.FC<TeacherPanelProps> = ({ onBack, onLaunchWithCode }) => {
-  const [questions, setQuestions] = useState<Question[]>(QUESTIONS_BANK);
+export const TeacherPanel: React.FC<TeacherPanelProps> = ({
+  initialQuestions,
+  onBack,
+  onUpdateQuestions,
+  onLaunchGame,
+}) => {
+  const [questions, setQuestions] = useState<Question[]>(initialQuestions || QUESTIONS_BANK);
   const [activeCode, setActiveCode] = useState<string>('');
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -101,19 +109,34 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({ onBack, onLaunchWith
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Top Header */}
         <div className="flex items-center justify-between">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white/80 hover:bg-white text-stone-700 text-xs font-bold border border-stone-200 shadow-clay-sm transition-all active:scale-95"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Return to Game</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                onUpdateQuestions?.(questions);
+                onBack();
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white/80 hover:bg-white text-stone-700 text-xs font-bold border border-stone-200 shadow-clay-sm transition-all active:scale-95"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Return to Game</span>
+            </button>
+
+            <ClayButton
+              variant="primary"
+              size="sm"
+              icon={<Play className="w-3.5 h-3.5 fill-white" />}
+              onClick={() => onLaunchGame ? onLaunchGame(questions) : onBack()}
+            >
+              Play with These Questions Now
+            </ClayButton>
+          </div>
+
           <div className="text-right">
             <h2 className="font-title text-xl sm:text-2xl text-stone-900 leading-tight">
               Teacher Dashboard
             </h2>
-            <p className="text-xs font-bold text-amber-800">
-              Manage Question Bank & Generate Classroom Codes
+            <p className="text-[11px] font-bold text-amber-800">
+              {questions.length} Questions Loaded
             </p>
           </div>
         </div>

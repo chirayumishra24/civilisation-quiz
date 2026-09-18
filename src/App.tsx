@@ -10,10 +10,14 @@ import { TeacherPanel } from './components/teacher/TeacherPanel';
 import { loadQuestionSet } from './utils/questionStorage';
 import { FullScreenButton } from './components/ui/FullScreenButton';
 
+import { QUESTIONS_BANK } from './data/questions';
+import { Question } from './types/game';
+
 export const App: React.FC = () => {
   const game = useGame();
   const [isTeacherMode, setIsTeacherMode] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
+  const [activeQuestions, setActiveQuestions] = useState<Question[]>(QUESTIONS_BANK);
 
   const handleStartGame = async () => {
     if (game.gameCode.trim().length >= 4) {
@@ -22,16 +26,28 @@ export const App: React.FC = () => {
       setCodeLoading(false);
       if (customSet) {
         const combined = [...customSet.teamAQuestions, ...customSet.teamBQuestions];
+        setActiveQuestions(combined);
         game.startGame(combined);
         return;
       }
     }
-    game.startGame();
+    game.startGame(activeQuestions);
   };
 
   const renderContent = () => {
     if (isTeacherMode) {
-      return <TeacherPanel onBack={() => setIsTeacherMode(false)} />;
+      return (
+        <TeacherPanel
+          initialQuestions={activeQuestions}
+          onUpdateQuestions={(updated) => setActiveQuestions(updated)}
+          onLaunchGame={(updated) => {
+            setActiveQuestions(updated);
+            setIsTeacherMode(false);
+            game.startGame(updated);
+          }}
+          onBack={() => setIsTeacherMode(false)}
+        />
+      );
     }
 
     switch (game.screen) {
