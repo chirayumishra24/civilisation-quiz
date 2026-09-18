@@ -5,7 +5,7 @@ import { UploadZone } from './UploadZone';
 import { QuestionPreview } from './QuestionPreview';
 import { QUESTIONS_BANK } from '../../data/questions';
 import { Question, Category, Difficulty } from '../../types/game';
-import { saveQuestionSet, generateGameCode } from '../../utils/questionStorage';
+import { saveQuestionSet, generateGameCode, setStoredActiveQuestions } from '../../utils/questionStorage';
 import {
   ArrowLeft,
   KeyRound,
@@ -16,6 +16,8 @@ import {
   Download,
   Share2,
   Play,
+  CheckCircle2,
+  Lock,
 } from 'lucide-react';
 
 interface TeacherPanelProps {
@@ -32,6 +34,8 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
   onLaunchGame,
 }) => {
   const [questions, setQuestions] = useState<Question[]>(initialQuestions || QUESTIONS_BANK);
+  const [isSheetUploaded, setIsSheetUploaded] = useState<boolean>(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const [activeCode, setActiveCode] = useState<string>('');
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -48,10 +52,22 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
   const [newDifficulty, setNewDifficulty] = useState<Difficulty>('easy');
   const [newExplanation, setNewExplanation] = useState('');
 
+  const handleSheetLoaded = (newBatch: Question[], fileName: string) => {
+    setQuestions(newBatch);
+    setIsSheetUploaded(true);
+    setUploadedFileName(fileName);
+    setActiveCode(''); // Reset code so teacher generates a fresh code for this sheet
+    setStoredActiveQuestions(newBatch);
+    onUpdateQuestions?.(newBatch);
+  };
+
   const handleGenerateCode = async () => {
+    if (!isSheetUploaded && questions.length === 0) return;
     setIsSaving(true);
     const code = generateGameCode();
     await saveQuestionSet(code, questions);
+    setStoredActiveQuestions(questions);
+    onUpdateQuestions?.(questions);
     setActiveCode(code);
     setIsSaving(false);
   };
@@ -69,7 +85,11 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
 
   const handleResetDefault = () => {
     setQuestions(QUESTIONS_BANK);
+    setIsSheetUploaded(false);
+    setUploadedFileName('');
     setActiveCode('');
+    setStoredActiveQuestions(QUESTIONS_BANK);
+    onUpdateQuestions?.(QUESTIONS_BANK);
   };
 
   const handleExportJSON = () => {
@@ -94,7 +114,10 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
       explanation: newExplanation.trim() || 'Archaeological evidence from Harappan excavations.',
     };
 
-    setQuestions((prev) => [created, ...prev]);
+    const updated = [created, ...questions];
+    setQuestions(updated);
+    setStoredActiveQuestions(updated);
+    onUpdateQuestions?.(updated);
     setNewQuestion('');
     setNewOptA('');
     setNewOptB('');
@@ -125,7 +148,7 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
               variant="primary"
               size="sm"
               icon={<Play className="w-3.5 h-3.5 fill-white" />}
-              onClick={() => onLaunchGame ? onLaunchGame(questions) : onBack()}
+              onClick={() => (onLaunchGame ? onLaunchGame(questions) : onBack())}
             >
               Play with These Questions Now
             </ClayButton>
@@ -136,23 +159,71 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
               Teacher Dashboard
             </h2>
             <p className="text-[11px] font-bold text-amber-800">
-              {questions.length} Questions Loaded
+              {questions.length} Questions {isSheetUploaded ? `(from ${uploadedFileName})` : 'Loaded'}
             </p>
           </div>
         </div>
 
-        {/* Game Code Generator Card */}
+        {/* STEP 1: Upload Excel / JSON Sheet */}
         <ClayCard elevation="md" className="p-6 bg-white/95 border-amber-300">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                Step 1: Upload Sheet
+              </span>
+              <h3 className="font-title text-base sm:text-lg text-stone-900 mt-1">
+                Upload Questions Spreadsheet (.xlsx, .xls, .json)
+              </h3>
+            </div>
+            {isSheetUploaded && (
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full flex items-center gap-1 border border-emerald-300">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Uploaded: {uploadedFileName}</span>
+              </span>
+            )}
+          </div>
+          <UploadZone onQuestionsLoaded={handleSheetLoaded} />
+        </ClayCard>
+
+        {/* STEP 2: Generate Game Code for Students (Unlocked ONLY after sheet upload) */}
+        <ClayCard
+          elevation="md"
+          className={`p-6 border-2 transition-all ${
+            isSheetUploaded
+              ? 'bg-white/95 border-emerald-400 ring-2 ring-emerald-100 shadow-clay'
+              : 'bg-stone-50/75 border-stone-200 opacity-70'
+          }`}
+        >
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-widest text-amber-800">
-                Classroom Session Code
-              </span>
-              <h3 className="font-title text-lg text-stone-900">
-                Generate Game Code for Students
+              <div className="flex items-center gap-2 mb-1">
+                <span
+                  className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                    isSheetUploaded
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-stone-200 text-stone-600'
+                  }`}
+                >
+                  {isSheetUploaded ? (
+                    <>
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      <span>Step 2: Unlocked — Ready to Generate Code</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3 h-3 text-stone-500" />
+                      <span>Step 2: Locked (Upload Sheet in Step 1 First)</span>
+                    </>
+                  )}
+                </span>
+              </div>
+              <h3 className="font-title text-base sm:text-lg text-stone-900">
+                Generate Student Game Code
               </h3>
               <p className="text-xs text-stone-600 max-w-md">
-                Generate a 6-digit code linked to your customized {questions.length} questions. Students enter this code on the home screen to load your custom test.
+                {isSheetUploaded
+                  ? `Generate a 6-digit session code linked to your ${questions.length} questions from ${uploadedFileName}. Students can enter this code to play your test.`
+                  : 'Please upload an Excel spreadsheet in Step 1 above. The student game code will only be generated for your uploaded sheet.'}
               </p>
             </div>
 
@@ -177,28 +248,20 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
                 </div>
               ) : (
                 <ClayButton
-                  variant="primary"
+                  variant={isSheetUploaded ? 'primary' : 'neutral'}
                   size="md"
                   onClick={handleGenerateCode}
-                  disabled={isSaving}
+                  disabled={!isSheetUploaded || isSaving}
                 >
-                  {isSaving ? 'Generating...' : 'Generate Game Code'}
+                  {isSaving
+                    ? 'Generating...'
+                    : isSheetUploaded
+                    ? 'Generate Game Code'
+                    : 'Upload Sheet First'}
                 </ClayButton>
               )}
             </div>
           </div>
-        </ClayCard>
-
-        {/* Upload Excel / JSON Zone */}
-        <ClayCard elevation="md" className="p-6 bg-white/95 border-amber-200">
-          <h3 className="font-title text-base sm:text-lg text-stone-900 mb-4">
-            Import Questions from File
-          </h3>
-          <UploadZone
-            onQuestionsLoaded={(newBatch) => {
-              setQuestions(newBatch);
-            }}
-          />
         </ClayCard>
 
         {/* Question Bank Preview & Management */}

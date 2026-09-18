@@ -4,7 +4,7 @@ import { parseExcelQuestions, generateSampleExcel } from '../../utils/excelParse
 import { Question } from '../../types/game';
 
 interface UploadZoneProps {
-  onQuestionsLoaded: (questions: Question[]) => void;
+  onQuestionsLoaded: (questions: Question[], fileName: string) => void;
 }
 
 export const UploadZone: React.FC<UploadZoneProps> = ({ onQuestionsLoaded }) => {
@@ -25,16 +25,16 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onQuestionsLoaded }) => 
         if (questions.length === 0) {
           throw new Error('No valid questions found in JSON');
         }
-        onQuestionsLoaded(questions);
-        setStatusMessage(`Successfully loaded ${questions.length} questions from JSON!`);
+        onQuestionsLoaded(questions, file.name);
+        setStatusMessage(`Successfully loaded ${questions.length} questions from ${file.name}!`);
       } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
         const buffer = await file.arrayBuffer();
         const questions = parseExcelQuestions(buffer);
         if (questions.length === 0) {
-          throw new Error('No valid rows found in Excel spreadsheet');
+          throw new Error('No valid question rows found in Excel sheet. Check headers.');
         }
-        onQuestionsLoaded(questions);
-        setStatusMessage(`Successfully loaded ${questions.length} questions from Excel!`);
+        onQuestionsLoaded(questions, file.name);
+        setStatusMessage(`Successfully loaded ${questions.length} questions from ${file.name}!`);
       } else {
         throw new Error('Please upload an Excel (.xlsx, .xls) or JSON file');
       }

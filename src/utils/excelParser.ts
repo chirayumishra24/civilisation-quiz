@@ -5,50 +5,86 @@ interface RawRow {
   [key: string]: any;
 }
 
+function getFieldValue(row: RawRow, candidates: string[]): any {
+  for (const k of Object.keys(row)) {
+    const cleanKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+    for (const c of candidates) {
+      const cleanCandidate = c.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cleanKey === cleanCandidate) {
+        return row[k];
+      }
+    }
+  }
+  return undefined;
+}
+
 export function parseExcelQuestions(fileData: ArrayBuffer): Question[] {
   const workbook = XLSX.read(fileData, { type: 'array' });
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
-  const json: RawRow[] = XLSX.utils.sheet_to_json(worksheet);
+  const json: RawRow[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
   const questions: Question[] = [];
 
   json.forEach((row, index) => {
-    const questionText = row['Question'] || row['question'] || row['QUESTION'];
-    const optA = row['Option A'] || row['optionA'] || row['A'] || row['Option 1'];
-    const optB = row['Option B'] || row['optionB'] || row['B'] || row['Option 2'];
-    const optC = row['Option C'] || row['optionC'] || row['C'] || row['Option 3'];
-    const optD = row['Option D'] || row['optionD'] || row['D'] || row['Option 4'];
+    const questionText = getFieldValue(row, ['question', 'questions', 'questiontext', 'q', 'title', 'problem']);
+    const optA = getFieldValue(row, ['optiona', 'option1', 'a', 'choicea', 'choice1', 'ans1', 'opt1', 'opta']);
+    const optB = getFieldValue(row, ['optionb', 'option2', 'b', 'choiceb', 'choice2', 'ans2', 'opt2', 'optb']);
+    const optC = getFieldValue(row, ['optionc', 'option3', 'c', 'choicec', 'choice3', 'ans3', 'opt3', 'optc']);
+    const optD = getFieldValue(row, ['optiond', 'option4', 'd', 'choiced', 'choice4', 'ans4', 'opt4', 'optd']);
 
     if (!questionText || !optA || !optB || !optC || !optD) return;
 
+    const options = [
+      String(optA).trim(),
+      String(optB).trim(),
+      String(optC).trim(),
+      String(optD).trim(),
+    ];
+
+    const rawCorrect = getFieldValue(row, ['correctanswer', 'correctoption', 'answer', 'correct', 'ans', 'rightanswer', 'key']);
+
     let correct = 0;
-    const rawCorrect = row['Correct Answer'] || row['correctAnswer'] || row['Answer'] || row['correct'];
-    if (typeof rawCorrect === 'string') {
-      const upper = rawCorrect.trim().toUpperCase();
-      if (upper === 'A' || upper === '1') correct = 0;
-      else if (upper === 'B' || upper === '2') correct = 1;
-      else if (upper === 'C' || upper === '3') correct = 2;
-      else if (upper === 'D' || upper === '4') correct = 3;
-    } else if (typeof rawCorrect === 'number') {
-      correct = rawCorrect >= 1 && rawCorrect <= 4 ? rawCorrect - 1 : rawCorrect;
+    if (rawCorrect !== undefined && rawCorrect !== null && rawCorrect !== '') {
+      if (typeof rawCorrect === 'number') {
+        correct = rawCorrect >= 1 && rawCorrect <= 4 ? rawCorrect - 1 : (rawCorrect >= 0 && rawCorrect < 4 ? rawCorrect : 0);
+      } else {
+        const rawStr = String(rawCorrect).trim();
+        const upper = rawStr.toUpperCase();
+        if (upper === 'A' || upper === '1' || upper === 'OPTION A' || upper === 'OPTION 1') correct = 0;
+        else if (upper === 'B' || upper === '2' || upper === 'OPTION B' || upper === 'OPTION 2') correct = 1;
+        else if (upper === 'C' || upper === '3' || upper === 'OPTION C' || upper === 'OPTION 3') correct = 2;
+        else if (upper === 'D' || upper === '4' || upper === 'OPTION D' || upper === 'OPTION 4') correct = 3;
+        else {
+          // Check if correct answer matches option text
+          const matchIdx = options.findIndex((opt) => opt.toLowerCase() === rawStr.toLowerCase());
+          if (matchIdx !== -1) {
+            correct = matchIdx;
+          }
+        }
+      }
     }
 
-    const rawDiff = (row['Difficulty'] || row['difficulty'] || 'easy').toLowerCase();
+    const rawDiff = String(getFieldValue(row, ['difficulty', 'level', 'diff']) || 'easy').toLowerCase();
     const difficulty: Difficulty = rawDiff === 'hard' ? 'hard' : rawDiff === 'medium' ? 'medium' : 'easy';
 
-    const category: Category = (row['Category'] || row['category'] || 'Harappan Cities') as Category;
-    const explanation = row['Explanation'] || row['explanation'] || 'Archaeological evidence from the Indus Valley.';
-    const visualType = (row['Visual Type'] || row['visualType'] || 'none') as VisualType;
+    const rawCat = getFieldValue(row, ['category', 'topic', 'unit', 'theme', 'chapter']);
+    const category: Category = (rawCat ? String(rawCat).trim() : 'Harappan Cities') as Category;
+
+    const rawExpl = getFieldValue(row, ['explanation', 'explain', 'fact', 'notes', 'reason', 'solution']);
+    const explanation = rawExpl ? String(rawExpl).trim() : 'Archaeological evidence from the Indus Valley excavations.';
+
+    const rawVisual = getFieldValue(row, ['visualtype', 'visual', 'type']);
+    const visualType = (rawVisual ? String(rawVisual).trim() : 'none') as VisualType;
 
     questions.push({
       id: `custom-${Date.now()}-${index}`,
       question: String(questionText).trim(),
-      options: [String(optA).trim(), String(optB).trim(), String(optC).trim(), String(optD).trim()],
+      options,
       correctAnswer: correct,
       difficulty,
       category,
-      explanation: String(explanation).trim(),
+      explanation,
       visualType,
     });
   });
