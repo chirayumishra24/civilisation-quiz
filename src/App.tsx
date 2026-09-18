@@ -79,6 +79,8 @@ const MainGamePage: React.FC = () => {
             gameCode={game.gameCode}
             setGameCode={game.setGameCode}
             activeQuestionsCount={isCustomActive ? activeQuestions.length : undefined}
+            timerMode={game.timerMode}
+            onSelectTimerMode={game.setTimerMode}
           />
         );
 

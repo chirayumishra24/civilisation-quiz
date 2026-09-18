@@ -12,6 +12,7 @@ interface QuestionCardProps {
   hint: string | null;
   lensRemaining: number;
   fiftyFiftyRemaining: number;
+  isSmartboard?: boolean;
   onSelectOption: (optionIndex: number) => void;
   onSubmit: () => void;
   onUseLens: () => void;
@@ -27,6 +28,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   hint,
   lensRemaining,
   fiftyFiftyRemaining,
+  isSmartboard = false,
   onSelectOption,
   onSubmit,
   onUseLens,
@@ -80,7 +82,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
         {/* Question Text */}
         <div className="my-3">
-          <p className="text-sm sm:text-base font-bold text-stone-800 leading-snug">
+          <p
+            className={`font-bold text-stone-800 leading-snug ${
+              isSmartboard ? 'text-base sm:text-xl font-extrabold py-1' : 'text-sm sm:text-base'
+            }`}
+          >
             {question.question}
           </p>
         </div>
@@ -97,7 +103,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         )}
 
         {/* Options List */}
-        <div className="space-y-2">
+        <div className={`space-y-2 ${isSmartboard ? 'space-y-3' : 'space-y-2'}`}>
           {question.options.map((option, idx) => {
             const isEliminated = eliminatedOptions.includes(idx);
             const isSelected = selectedOption === idx;
@@ -107,8 +113,8 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               buttonClass = 'bg-stone-100 text-stone-400 border-stone-200 opacity-40 cursor-not-allowed line-through';
             } else if (isSelected) {
               buttonClass = isMohenjo
-                ? 'bg-blue-600 text-white border-blue-700 shadow-md ring-2 ring-blue-300'
-                : 'bg-orange-600 text-white border-orange-700 shadow-md ring-2 ring-orange-300';
+                ? 'bg-blue-600 text-white border-blue-700 shadow-md ring-4 ring-blue-300'
+                : 'bg-orange-600 text-white border-orange-700 shadow-md ring-4 ring-orange-300';
             }
 
             return (
@@ -116,10 +122,14 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 key={idx}
                 disabled={isEliminated || isSubmitted}
                 onClick={() => onSelectOption(idx)}
-                className={`w-full text-left p-2.5 sm:p-3 rounded-2xl border-2 transition-all flex items-start gap-2.5 active:scale-[0.98] ${buttonClass}`}
+                className={`w-full text-left rounded-2xl border-2 transition-all flex items-start gap-3 active:scale-[0.97] ${buttonClass} ${
+                  isSmartboard ? 'p-3.5 sm:p-4 min-h-[62px]' : 'p-2.5 sm:p-3'
+                }`}
               >
                 <span
-                  className={`w-6 h-6 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                  className={`rounded-xl flex items-center justify-center font-bold flex-shrink-0 ${
+                    isSmartboard ? 'w-8 h-8 text-sm' : 'w-6 h-6 text-xs'
+                  } ${
                     isSelected
                       ? 'bg-white/30 text-white'
                       : isMohenjo
@@ -129,7 +139,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 >
                   {optionPrefixes[idx]}
                 </span>
-                <span className="text-xs sm:text-sm font-medium leading-tight pt-0.5">
+                <span
+                  className={`font-medium leading-snug pt-0.5 ${
+                    isSmartboard ? 'text-sm sm:text-base font-semibold' : 'text-xs sm:text-sm'
+                  }`}
+                >
                   {option}
                 </span>
               </button>

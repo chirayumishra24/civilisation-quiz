@@ -13,6 +13,8 @@ import {
   GameStats,
   FeedbackState,
   CITY_STAGES,
+  TimerMode,
+  TIMER_PRESETS,
 } from '../types/game';
 import { QUESTIONS_BANK } from '../data/questions';
 import { QuestionManager, splitQuestionsForTeams } from '../utils/questionManager';
@@ -25,6 +27,7 @@ export function useGame() {
   const [screen, setScreen] = useState<ScreenState>('start');
   const [round, setRound] = useState<number>(1);
   const [gameCode, setGameCode] = useState<string>('');
+  const [timerMode, setTimerMode] = useState<TimerMode>('standard');
 
   const [mohenjoState, setMohenjoState] = useState<TeamState>({ ...initialTeamState });
   const [dholaviraState, setDholaviraState] = useState<TeamState>({ ...initialTeamState });
@@ -54,6 +57,7 @@ export function useGame() {
   const qManagerB = useRef<QuestionManager | null>(null);
 
   const timer = useTimer({
+    initialSeconds: TIMER_PRESETS[timerMode].seconds,
     onTimeUp: () => {
       handleTimeUp();
     },
@@ -96,18 +100,22 @@ export function useGame() {
     setFeedback(null);
   }, [initQuestions]);
 
-  const startGame = useCallback((customPool?: Question[]) => {
+  const startGame = useCallback((customPool?: Question[], selectedTimerMode?: TimerMode) => {
+    const activeMode = selectedTimerMode || timerMode;
+    if (selectedTimerMode) setTimerMode(selectedTimerMode);
+    const duration = TIMER_PRESETS[activeMode].seconds;
+
     initQuestions(customPool);
     setMohenjoState({ ...initialTeamState });
     setDholaviraState({ ...initialTeamState });
     setRound(1);
     setWinner(null);
     loadNextQuestions();
-    timer.reset();
+    timer.reset(duration);
     timer.start();
     soundManager.playStartSound();
     setScreen('game');
-  }, [initQuestions, loadNextQuestions, timer]);
+  }, [initQuestions, loadNextQuestions, timer, timerMode]);
 
   const selectOption = useCallback((team: TeamId, optionIndex: number) => {
     soundManager.playClickSound();
@@ -357,5 +365,7 @@ export function useGame() {
     submitAnswer,
     useArchaeologistLens,
     useFiftyFifty,
+    timerMode,
+    setTimerMode,
   };
 }

@@ -12,6 +12,7 @@ interface TeamPanelProps {
   isSubmitted: boolean;
   eliminatedOptions: number[];
   hint: string | null;
+  isSmartboard?: boolean;
   onSelectOption: (idx: number) => void;
   onSubmit: () => void;
   onUseLens: () => void;
@@ -26,6 +27,7 @@ export const TeamPanel: React.FC<TeamPanelProps> = ({
   isSubmitted,
   eliminatedOptions,
   hint,
+  isSmartboard = false,
   onSelectOption,
   onSubmit,
   onUseLens,
@@ -96,6 +98,7 @@ export const TeamPanel: React.FC<TeamPanelProps> = ({
           hint={hint}
           lensRemaining={teamState.lensUses}
           fiftyFiftyRemaining={teamState.fiftyFiftyUses}
+          isSmartboard={isSmartboard}
           onSelectOption={onSelectOption}
           onSubmit={onSubmit}
           onUseLens={onUseLens}

@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { WinnerType, GameStats } from '../../types/game';
 import { ClayCard } from '../ui/ClayCard';
 import { ClayButton } from '../ui/ClayButton';
-import { Trophy, RotateCcw, BookOpen, Home, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Trophy, RotateCcw, BookOpen, Home, Sparkles, CheckCircle2, Award } from 'lucide-react';
 import { HarappanWorld } from '../3d/HarappanWorld';
+import { VictoryCertificateModal } from '../ui/VictoryCertificateModal';
 
 interface VictoryScreenProps {
   winner: WinnerType;
@@ -23,6 +24,7 @@ export const VictoryScreen: React.FC<VictoryScreenProps> = ({
   const isMohenjoWinner = winner === 'mohenjo';
   const isDholaviraWinner = winner === 'dholavira';
   const isTie = winner === 'tie';
+  const [showCert, setShowCert] = useState(false);
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-between p-4 sm:p-8 bg-gradient-to-b from-[#FFFDF5] via-[#FFF8E7] to-[#F5E6D3]">
@@ -154,6 +156,16 @@ export const VictoryScreen: React.FC<VictoryScreenProps> = ({
           <ClayButton
             variant="primary"
             size="lg"
+            className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white shadow-clay-lg"
+            icon={<Award className="w-5 h-5" />}
+            onClick={() => setShowCert(true)}
+          >
+            Print Award Certificate
+          </ClayButton>
+
+          <ClayButton
+            variant="primary"
+            size="lg"
             className="w-full sm:w-auto shadow-clay-lg"
             icon={<BookOpen className="w-5 h-5" />}
             onClick={onSummary}
@@ -172,6 +184,13 @@ export const VictoryScreen: React.FC<VictoryScreenProps> = ({
           </ClayButton>
         </div>
       </div>
+
+      <VictoryCertificateModal
+        isOpen={showCert}
+        onClose={() => setShowCert(false)}
+        winner={winner}
+        stats={stats}
+      />
 
       <div className="text-xs font-semibold text-stone-400 pt-4">
         Antiquity preserved • Harappan Civilisation Digital Activity

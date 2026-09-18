@@ -3,6 +3,7 @@ import { TOTAL_ROUNDS } from '../../types/game';
 import { soundManager } from '../../utils/soundManager';
 import { Clock, Volume2, VolumeX, Flame, Award } from 'lucide-react';
 import { FullScreenButton } from './FullScreenButton';
+import { SmartboardToggle } from './SmartboardToggle';
 
 interface TopBarProps {
   round: number;
@@ -10,6 +11,8 @@ interface TopBarProps {
   isRush: boolean;
   formatTime: (seconds?: number) => string;
   onHomeClick?: () => void;
+  isSmartboard?: boolean;
+  onToggleSmartboard?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -18,6 +21,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   isRush,
   formatTime,
   onHomeClick,
+  isSmartboard = false,
+  onToggleSmartboard,
 }) => {
   const [soundEnabled, setSoundEnabled] = useState(soundManager.isEnabled());
 
@@ -78,7 +83,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             <Clock className="w-4 h-4 text-amber-600" />
           )}
           <span className="font-title text-sm sm:text-base tracking-wider">
-            {formatTime(timeLeft)}
+            {formatTime(timeLeft) === 'Untimed' ? 'Teacher-Led (Untimed)' : formatTime(timeLeft)}
           </span>
           {isRush && (
             <span className="text-[10px] font-bold uppercase tracking-widest bg-rose-700 px-1.5 py-0.5 rounded">
@@ -90,6 +95,10 @@ export const TopBar: React.FC<TopBarProps> = ({
 
       {/* Utilities */}
       <div className="flex items-center gap-2">
+        {onToggleSmartboard && (
+          <SmartboardToggle isSmartboard={isSmartboard} onToggle={onToggleSmartboard} />
+        )}
+
         <button
           onClick={toggleSound}
           title={soundEnabled ? 'Mute Sound' : 'Enable Sound'}

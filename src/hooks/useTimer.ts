@@ -21,7 +21,12 @@ export function useTimer({
   onTimeUpRef.current = onTimeUp;
   onRushStartRef.current = onRushStart;
 
-  const start = useCallback(() => setIsRunning(true), []);
+  const isUntimed = initialSeconds <= 0;
+
+  const start = useCallback(() => {
+    if (!isUntimed) setIsRunning(true);
+  }, [isUntimed]);
+
   const pause = useCallback(() => setIsRunning(false), []);
   const reset = useCallback((newSeconds = initialSeconds) => {
     setTimeLeft(newSeconds);
@@ -30,7 +35,7 @@ export function useTimer({
   }, [initialSeconds]);
 
   useEffect(() => {
-    if (!isRunning) return;
+    if (!isRunning || isUntimed) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -51,15 +56,16 @@ export function useTimer({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isRunning, isRush]);
+  }, [isRunning, isRush, isUntimed]);
 
   const formatTime = useCallback((seconds: number = timeLeft): string => {
+    if (isUntimed) return 'Untimed';
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }, [timeLeft]);
+  }, [timeLeft, isUntimed]);
 
-  const percentage = Math.max(0, Math.min(100, (timeLeft / initialSeconds) * 100));
+  const percentage = isUntimed ? 100 : Math.max(0, Math.min(100, (timeLeft / initialSeconds) * 100));
 
   return {
     timeLeft,

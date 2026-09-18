@@ -3,7 +3,12 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { DualCityView } from './DualCityView';
-import { Eye, Layers } from 'lucide-react';
+import { Eye, Layers, Compass } from 'lucide-react';
+import {
+  LandmarkInspectorDrawer,
+  ArchaeologicalLandmark,
+  ARCHAEOLOGICAL_LANDMARKS,
+} from './LandmarkInspectorDrawer';
 
 interface HarappanWorldProps {
   mohenjoStage: number;
@@ -17,6 +22,8 @@ export const HarappanWorld: React.FC<HarappanWorldProps> = ({
   activeFocus = 'both',
 }) => {
   const [viewMode, setViewMode] = useState<'both' | 'mohenjo' | 'dholavira'>(activeFocus);
+  const [showInspector, setShowInspector] = useState(false);
+  const [selectedLandmark, setSelectedLandmark] = useState<ArchaeologicalLandmark | null>(null);
   const controlsRef = useRef<OrbitControlsImpl>(null);
 
   const handleSwitchView = (mode: 'both' | 'mohenjo' | 'dholavira') => {
@@ -31,10 +38,33 @@ export const HarappanWorld: React.FC<HarappanWorldProps> = ({
     }
   };
 
+  const handleSelectLandmark = (landmark: ArchaeologicalLandmark) => {
+    setSelectedLandmark(landmark);
+    setShowInspector(true);
+    if (controlsRef.current) {
+      controlsRef.current.target.set(
+        landmark.targetCoord[0],
+        landmark.targetCoord[1],
+        landmark.targetCoord[2]
+      );
+    }
+  };
+
+  const toggleInspector = () => {
+    if (!showInspector) {
+      const defaultLandmark =
+        ARCHAEOLOGICAL_LANDMARKS.find((l) => Math.max(mohenjoStage, dholaviraStage) >= l.stageRequired) ||
+        ARCHAEOLOGICAL_LANDMARKS[0];
+      handleSelectLandmark(defaultLandmark);
+    } else {
+      setShowInspector(false);
+    }
+  };
+
   return (
     <div className="relative w-full h-full min-h-[350px] rounded-3xl overflow-hidden shadow-clay bg-gradient-to-b from-[#E0F2FE] via-[#FEF3C7] to-[#F5E6D3] border-2 border-white/80">
       {/* View Toggle Pill Toolbar */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 p-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-clay-sm border border-white/60">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 p-1.5 rounded-full bg-white/85 backdrop-blur-md shadow-clay-sm border border-white/60">
         <button
           onClick={() => handleSwitchView('mohenjo')}
           className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
@@ -67,6 +97,21 @@ export const HarappanWorld: React.FC<HarappanWorldProps> = ({
         >
           <span className="w-2 h-2 rounded-full bg-orange-400 inline-block"></span>
           Dholavira
+        </button>
+
+        <div className="w-[1px] h-4 bg-stone-300 mx-0.5" />
+
+        <button
+          onClick={toggleInspector}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${
+            showInspector
+              ? 'bg-amber-500 text-white shadow-sm'
+              : 'text-amber-800 hover:bg-amber-100/70'
+          }`}
+          title="Inspect reconstructed archaeological landmarks"
+        >
+          <Compass className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Inspect Landmarks</span>
         </button>
       </div>
 
@@ -124,6 +169,16 @@ export const HarappanWorld: React.FC<HarappanWorldProps> = ({
         {/* Dual City Interactive Model */}
         <DualCityView mohenjoStage={mohenjoStage} dholaviraStage={dholaviraStage} />
       </Canvas>
+
+      {/* Interactive Landmark Drawer Overlay */}
+      <LandmarkInspectorDrawer
+        isOpen={showInspector}
+        onClose={() => setShowInspector(false)}
+        selectedLandmark={selectedLandmark}
+        onSelectLandmark={handleSelectLandmark}
+        mohenjoStage={mohenjoStage}
+        dholaviraStage={dholaviraStage}
+      />
     </div>
   );
 };

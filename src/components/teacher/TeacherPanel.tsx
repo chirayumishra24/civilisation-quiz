@@ -31,7 +31,9 @@ import {
   Trash2,
   Cloud,
   HardDrive,
+  FileSpreadsheet,
 } from 'lucide-react';
+import { downloadSampleExcelTemplate } from '../../utils/excelTemplate';
 
 interface TeacherPanelProps {
   initialQuestions?: Question[];
@@ -250,12 +252,22 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
                 Upload Questions Spreadsheet (.xlsx, .xls, .json)
               </h3>
             </div>
-            {isSheetUploaded && (
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full flex items-center gap-1 border border-emerald-300">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Uploaded: {uploadedFileName}</span>
-              </span>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={downloadSampleExcelTemplate}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-300 text-xs font-bold transition-all active:scale-95 shadow-sm"
+                title="Download formatted sample Excel sheet pre-filled with NCERT questions"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-amber-700" />
+                <span>Download Sample Excel Template</span>
+              </button>
+              {isSheetUploaded && (
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full flex items-center gap-1 border border-emerald-300">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Uploaded: {uploadedFileName}</span>
+                </span>
+              )}
+            </div>
           </div>
           <UploadZone onQuestionsLoaded={handleSheetLoaded} />
         </ClayCard>

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { ClayCard } from '../ui/ClayCard';
 import { ClayButton } from '../ui/ClayButton';
-import { Play, BookOpen, KeyRound, Sparkles, Shield, Compass, Landmark } from 'lucide-react';
+import { Play, BookOpen, KeyRound, Sparkles, Shield, Compass, Landmark, Clock } from 'lucide-react';
 import { HarappanWorld } from '../3d/HarappanWorld';
+import { TimerMode, TIMER_PRESETS } from '../../types/game';
 
 interface StartScreenProps {
   onStart: () => void;
@@ -11,6 +12,8 @@ interface StartScreenProps {
   gameCode: string;
   setGameCode: (code: string) => void;
   activeQuestionsCount?: number;
+  timerMode?: TimerMode;
+  onSelectTimerMode?: (mode: TimerMode) => void;
 }
 
 export const StartScreen: React.FC<StartScreenProps> = ({
@@ -20,6 +23,8 @@ export const StartScreen: React.FC<StartScreenProps> = ({
   gameCode,
   setGameCode,
   activeQuestionsCount,
+  timerMode = 'standard',
+  onSelectTimerMode,
 }) => {
   const [codeError, setCodeError] = useState('');
 
@@ -114,6 +119,39 @@ export const StartScreen: React.FC<StartScreenProps> = ({
               maxLength={8}
               className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white/90 border-2 border-stone-200 text-stone-800 placeholder-stone-400 text-sm font-bold shadow-clay-inset focus:outline-none focus:border-amber-400 tracking-wider"
             />
+          </div>
+
+          {/* Classroom Round Timer Selector */}
+          <div className="p-2.5 rounded-2xl bg-white/85 backdrop-blur-md border border-amber-200 shadow-clay-sm space-y-1.5 text-left">
+            <div className="flex items-center justify-between text-[11px] font-bold text-stone-600 px-1">
+              <span className="flex items-center gap-1 text-amber-900">
+                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                Round Timer:
+              </span>
+              <span className="text-stone-500 font-medium truncate max-w-[200px]">
+                {TIMER_PRESETS[timerMode].description}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {(Object.keys(TIMER_PRESETS) as TimerMode[]).map((modeKey) => {
+                const preset = TIMER_PRESETS[modeKey];
+                const isSelected = timerMode === modeKey;
+                return (
+                  <button
+                    key={modeKey}
+                    type="button"
+                    onClick={() => onSelectTimerMode?.(modeKey)}
+                    className={`py-1.5 px-1 rounded-xl text-xs font-bold transition-all active:scale-95 text-center ${
+                      isSelected
+                        ? 'bg-amber-600 text-white shadow-clay-sm'
+                        : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-3">

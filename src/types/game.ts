@@ -107,8 +107,24 @@ export const CITY_STAGES = [
 export const MAX_CITY_STAGES = 12;
 export const TOTAL_ROUNDS = 12;
 export const STREAK_THRESHOLD = 3;
-export const GAME_DURATION_SECONDS = 300; // 5 minutes
+export const GAME_DURATION_SECONDS = 300; // 5 minutes default
 export const RUSH_THRESHOLD_SECONDS = 60; // last 1 min
+
+export type TimerMode = 'fast' | 'standard' | 'discussion' | 'untimed';
+
+export interface TimerPreset {
+  id: TimerMode;
+  label: string;
+  seconds: number;
+  description: string;
+}
+
+export const TIMER_PRESETS: Record<TimerMode, TimerPreset> = {
+  fast: { id: 'fast', label: 'Blitz 15s', seconds: 180, description: '15s/round fast challenge' },
+  standard: { id: 'standard', label: 'Standard 25s', seconds: 300, description: 'Balanced 25s/round' },
+  discussion: { id: 'discussion', label: 'Discussion 45s', seconds: 540, description: '45s/round for discussion' },
+  untimed: { id: 'untimed', label: 'Untimed', seconds: 0, description: 'Teacher-led with no clock' },
+};
 
 /* ── Screen state ── */
 export type ScreenState = 'start' | 'teamSelect' | 'instructions' | 'game' | 'victory' | 'summary';
